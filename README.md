@@ -1,76 +1,97 @@
-# CivicPulse Flutter App
+# CivicPulse — Flutter Android App
 
-A pixel-faithful Flutter Android app for the CivicPulse civic complaint platform.
+> Civic complaint management, in your pocket. Pixel-faithful port of the CivicPulse web platform.
+
+---
 
 ## Screens
 
-| Screen | Description |
-|--------|-------------|
-| Splash | Auto-login check, animated logo |
-| Login / Register | Tabbed auth with blue hero panel (matches HTML design) |
-| Home | Hero section, recent reports, categories grid, how-it-works |
-| Submit | Category picker, complaint text, location, AI notice |
-| Track | CP-XXXXXXXX search + status timeline |
-| Profile | Points, badges, my complaints, logout |
+### Splash
+- Animated logo on launch
+- Checks saved auth token → auto-navigates to Home or Login
 
-## Setup
+### Login / Register
+- Tabbed layout (no screen change between Login and Register)
+- Blue hero panel matches the web design
+- Inline field validation with error states
 
-### 1. Prerequisites
-- Flutter SDK 3.x
-- Android Studio / VS Code
-- Your backend running (Node.js + MongoDB)
+### Home
+- Hero banner with username and submit CTA
+- Horizontal scroll list of recent complaints
+- Category grid (Roads, Water, Electricity, Sanitation…)
+- 3-step "How It Works" explainer
 
-### 2. Install dependencies
-```bash
-flutter pub get
-```
+### Submit Complaint
+- Category chip picker → description field → GPS or manual location
+- Optional photo attachment
+- AI processing notice before submit
+- Confirmation dialog shows assigned `CP-XXXXXXXX` ID
 
-### 3. Configure backend URL
-Open `lib/services/api_service.dart` and update:
-```dart
-static const String baseUrl = 'http://10.0.2.2:5000/api';
-//  ↑ 10.0.2.2 = localhost from Android emulator
-//  Use your machine's LAN IP (e.g. 192.168.1.x) for a real device
-```
+### Track Complaint
+- Search by `CP-XXXXXXXX`
+- 4-stage visual timeline: `Submitted` → `Under Review` → `In Progress` → `Resolved`
+- Shows assigned department, last updated, and admin remarks
 
-### 4. Run
-```bash
-flutter run
-```
+### Profile
+- Points, badges, and filterable complaints list (All / Open / Resolved)
+- Tap complaint → opens Track screen pre-filled
+- Logout at the bottom
 
-## Color Reference (matches your HTML)
-
-| Variable | Value |
-|----------|-------|
-| `--blue` | `#2C5AA0` |
-| `--blue-dark` | `#1e3f72` |
-| `--teal` | `#00A8A8` |
-| `--bg` | `#F5F7FA` |
-| `--text` | `#222222` |
+---
 
 ## Project Structure
 
 ```
-lib/
-├── main.dart               # Entry point
-├── theme.dart              # Colors + ThemeData
-├── models/
-│   └── models.dart         # User, Complaint
-├── services/
-│   └── api_service.dart    # All API calls
-├── widgets/
-│   └── widgets.dart        # Shared UI components
-└── screens/
-    ├── splash_screen.dart
-    ├── login_screen.dart
-    ├── home_screen.dart
-    ├── submit_screen.dart
-    ├── track_screen.dart
-    └── profile_screen.dart
+civicpulse_app/
+├── android/
+│   └── app/src/main/
+│       └── AndroidManifest.xml         # Cleartext traffic, permissions
+├── lib/
+│   ├── main.dart                       # Entry point, MaterialApp, route table
+│   ├── theme.dart                      # Colors, text styles, ThemeData
+│   │
+│   ├── models/
+│   │   └── models.dart                 # User, Complaint, Badge, Category
+│   │
+│   ├── services/
+│   │   ├── api_service.dart            # All HTTP calls (auth, complaints, track)
+│   │   └── storage_service.dart        # SharedPreferences (token, user cache)
+│   │
+│   ├── widgets/
+│   │   ├── widgets.dart                # Barrel export
+│   │   ├── category_chip.dart          # Category pill used in Submit
+│   │   ├── complaint_card.dart         # Card used in Home + Profile
+│   │   ├── status_timeline.dart        # 4-stage progress indicator
+│   │   └── badge_tile.dart             # Badge display in Profile
+│   │
+│   └── screens/
+│       ├── splash_screen.dart
+│       ├── login_screen.dart
+│       ├── home_screen.dart
+│       ├── submit_screen.dart
+│       ├── track_screen.dart
+│       └── profile_screen.dart
+│
+├── assets/
+│   ├── images/
+│   │   └── logo.png
+│   └── icons/                          # Category icons (SVG or PNG)
+│
+└── pubspec.yaml
 ```
 
-## Notes
-- The app uses `usesCleartextTraffic="true"` in AndroidManifest for localhost HTTP.
-  Remove this for production HTTPS.
-- Backend IP `10.0.2.2` works for Android emulator → your PC's localhost.
-  For physical device on same WiFi, use your PC's local IP.
+---
+
+
+## Roadmap
+
+| Feature | Priority |
+|---------|----------|
+|  Push notifications — status update alerts via FCM | High |
+|  Map view — plot complaints on a live map | High |
+|  Fix Gemini AI routing — reliable department assignment + confidence score | High |
+|  Admin dashboard screen (department-side view) | Medium |
+|  Offline mode — queue complaints when no internet | Medium |
+|  Multi-language support (Hindi + regional) | Low |
+|  iOS build | Low |
+
