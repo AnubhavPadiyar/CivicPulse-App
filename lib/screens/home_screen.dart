@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../models/models.dart';
 import '../widgets/widgets.dart';
+import '../services/api_service.dart';
 import 'submit_screen.dart';
 import 'track_screen.dart';
 import 'profile_screen.dart';
@@ -16,6 +17,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
+  List<Complaint> _recentComplaints = [];
+  bool _loadingRecent = true;
 
   final List<Map<String, String>> _categories = [
     {'emoji': '🛣️', 'name': 'Roads &\nInfrastructure', 'cat': 'Roads & Infrastructure'},
@@ -26,345 +29,383 @@ class _HomeScreenState extends State<HomeScreen> {
     {'emoji': '📋', 'name': 'Public\nNuisance', 'cat': 'Public Nuisance'},
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentComplaints();
+  }
+
+  Future<void> _loadRecentComplaints() async {
+    try {
+      final list = await ApiService.myComplaints();
+      if (mounted) {
+        setState(() {
+          _recentComplaints = list.take(3).toList();
+          _loadingRecent = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingRecent = false);
+    }
+  }
+
   void _goToSubmit([String? category]) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => SubmitScreen(user: widget.user, preCategory: category),
-    ));
+    )).then((_) => _loadRecentComplaints());
+  }
+
+  Widget _buildRecentReportsCard() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.blue.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Recent Reports',
+                style: TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.text,
+                ),
+              ),
+              const LiveBadge(),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Loading state
+          if (_loadingRecent)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: CircularProgressIndicator(color: AppColors.blue),
+            )
+
+          // Empty state
+          else if (_recentComplaints.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                children: [
+                  const Text('📭', style: TextStyle(fontSize: 28)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'No complaints yet.\nTap "Report an Issue" to get started!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textLight,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            )
+
+          // Real complaints
+          else
+            ...(_recentComplaints.map((c) => ComplaintMiniCard(
+                  emoji: c.categoryEmoji,
+                  type: c.category,
+                  desc: c.rawText,
+                  trackingId: c.trackingId,
+                  status: c.status,
+                ))),
+        ],
+      ),
+    );
   }
 
   Widget _buildHomeTab() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── HERO ──────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 32, 20, 28),
-            color: AppColors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.blueSoft,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.blueLight),
+    return RefreshIndicator(
+      onRefresh: _loadRecentComplaints,
+      color: AppColors.blue,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── HERO ──────────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 32, 20, 28),
+              color: AppColors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.blueSoft,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.blueLight),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _PulseDot(color: AppColors.teal),
+                        const SizedBox(width: 7),
+                        const Text(
+                          'AI-Powered · Gemini',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.blue,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  const SizedBox(height: 18),
+                  RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                        fontFamily: 'Sora',
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.text,
+                        height: 1.15,
+                        letterSpacing: -1,
+                      ),
+                      children: [
+                        TextSpan(text: 'Be the change.\nReport. Track. Resolve.\n'),
+                        TextSpan(
+                          text: 'Build a better city.',
+                          style: TextStyle(color: AppColors.blue),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Report civic issues in plain language — garbage, potholes, water leaks, broken streetlights. AI routes it to the right authority in seconds.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textMid,
+                      height: 1.65,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
                     children: [
-                      _PulseDot(color: AppColors.teal),
-                      const SizedBox(width: 7),
-                      const Text(
-                        'AI-Powered · Gemini',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.blue,
-                          letterSpacing: 0.3,
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _goToSubmit(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.blue,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            elevation: 2,
+                            shadowColor: AppColors.blue.withOpacity(0.3),
+                          ),
+                          child: const Text(
+                            'Report an Issue →',
+                            style: TextStyle(
+                              fontFamily: 'Sora',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => setState(() => _tab = 1),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textMid,
+                            side: const BorderSide(
+                                color: AppColors.border, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                          ),
+                          child: const Text(
+                            'Track Complaint',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 18),
-                RichText(
-                  text: const TextSpan(
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.only(top: 20),
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: AppColors.border)),
+                    ),
+                    child: Row(
+                      children: const [
+                        _StatStrip(num: '2.4K+', label: 'Complaints Filed'),
+                        SizedBox(width: 28),
+                        _StatStrip(num: '87%', label: 'Resolution Rate'),
+                        SizedBox(width: 28),
+                        _StatStrip(num: '48h', label: 'Avg. Response'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── RECENT REPORTS (LIVE) ──────────────────────
+            _buildRecentReportsCard(),
+
+            // ── CATEGORIES ─────────────────────────────────
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('What do you want to report?'),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Select a category',
                     style: TextStyle(
                       fontFamily: 'Sora',
-                      fontSize: 30,
+                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: AppColors.text,
-                      height: 1.15,
-                      letterSpacing: -1,
+                      letterSpacing: -0.5,
                     ),
-                    children: [
-                      TextSpan(text: 'Your city.\nYour voice.\n'),
-                      TextSpan(
-                        text: 'Real action.',
-                        style: TextStyle(color: AppColors.blue),
-                      ),
-                    ],
                   ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Report civic issues in plain language — garbage, potholes, water leaks, broken streetlights. AI routes it to the right authority in seconds.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textMid,
-                    height: 1.65,
+                  const SizedBox(height: 16),
+                  GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    children: _categories
+                        .map((c) => CategoryCard(
+                              emoji: c['emoji']!,
+                              name: c['name']!,
+                              onTap: () => _goToSubmit(c['cat']),
+                            ))
+                        .toList(),
                   ),
-                ),
-                const SizedBox(height: 22),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => _goToSubmit(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.blue,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          elevation: 2,
-                          shadowColor: AppColors.blue.withOpacity(0.3),
-                        ),
-                        child: const Text(
-                          'Report an Issue →',
-                          style: TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => setState(() => _tab = 1),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textMid,
-                          side: const BorderSide(
-                              color: AppColors.border, width: 1.5),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                        ),
-                        child: const Text(
-                          'Track Complaint',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.only(top: 20),
-                  decoration: const BoxDecoration(
-                    border: Border(top: BorderSide(color: AppColors.border)),
-                  ),
-                  child: Row(
-                    children: const [
-                      _StatStrip(num: '2.4K+', label: 'Complaints Filed'),
-                      SizedBox(width: 28),
-                      _StatStrip(num: '87%', label: 'Resolution Rate'),
-                      SizedBox(width: 28),
-                      _StatStrip(num: '48h', label: 'Avg. Response'),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // ── RECENT REPORTS MOCKUP ──────────────────────
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.blue.withOpacity(0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+            // ── HOW IT WORKS ────────────────────────────────
+            const SizedBox(height: 28),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('How It Works'),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Three steps to resolution',
+                    style: TextStyle(
+                      fontFamily: 'Sora',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _HowCard(
+                    num: '01',
+                    title: 'Describe the Issue',
+                    desc: 'Type your complaint in plain language. Add a photo and pin your location — no forms, no confusion.',
+                  ),
+                  const SizedBox(height: 10),
+                  _HowCard(
+                    num: '02',
+                    title: 'AI Routes It',
+                    desc: 'Gemini AI reads your complaint, assigns priority, and routes it to the correct government department.',
+                  ),
+                  const SizedBox(height: 10),
+                  _HowCard(
+                    num: '03',
+                    title: 'Track & Resolve',
+                    desc: 'Get a unique tracking ID. Monitor your complaint\'s status in real time. Earn badges for participation.',
+                  ),
+                ],
+              ),
             ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Recent Reports',
+
+            // ── TRACK CTA (BLUE BANNER) ─────────────────────
+            const SizedBox(height: 24),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.blue,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Already filed?\nTrack your complaint.',
+                    style: TextStyle(
+                      fontFamily: 'Sora',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Enter your tracking ID to get real-time status updates.',
+                    style: TextStyle(fontSize: 13, color: Colors.white60, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _tab = 1),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.teal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 24),
+                    ),
+                    child: const Text(
+                      'Track →',
                       style: TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
-                        color: AppColors.text,
                       ),
                     ),
-                    const LiveBadge(),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const ComplaintMiniCard(
-                  emoji: '🗑️',
-                  type: 'Garbage Overflow',
-                  desc: 'Market area, not collected for 4 days',
-                  trackingId: 'CP-A4F82B1C',
-                  status: 'In Progress',
-                ),
-                const ComplaintMiniCard(
-                  emoji: '💧',
-                  type: 'Water Pipe Burst',
-                  desc: 'Main road, wasting since morning',
-                  trackingId: 'CP-D3C92A4E',
-                  status: 'Under Review',
-                ),
-                const ComplaintMiniCard(
-                  emoji: '🚦',
-                  type: 'Traffic Signal Down',
-                  desc: 'Main junction, not working since last night',
-                  trackingId: 'CP-B1E74F2D',
-                  status: 'Resolved',
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-
-          // ── CATEGORIES ─────────────────────────────────
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionLabel('What do you want to report?'),
-                const SizedBox(height: 6),
-                const Text(
-                  'Select a category',
-                  style: TextStyle(
-                    fontFamily: 'Sora',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                GridView.count(
-                  crossAxisCount: 3,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  children: _categories
-                      .map((c) => CategoryCard(
-                            emoji: c['emoji']!,
-                            name: c['name']!,
-                            onTap: () => _goToSubmit(c['cat']),
-                          ))
-                      .toList(),
-                ),
-              ],
-            ),
-          ),
-
-          // ── HOW IT WORKS ────────────────────────────────
-          const SizedBox(height: 28),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionLabel('How It Works'),
-                const SizedBox(height: 6),
-                const Text(
-                  'Three steps to resolution',
-                  style: TextStyle(
-                    fontFamily: 'Sora',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _HowCard(
-                  num: '01',
-                  title: 'Describe the Issue',
-                  desc:
-                      'Type your complaint in plain language. Add a photo and pin your location — no forms, no confusion.',
-                ),
-                const SizedBox(height: 10),
-                _HowCard(
-                  num: '02',
-                  title: 'AI Routes It',
-                  desc:
-                      'Gemini AI reads your complaint, assigns priority, and routes it to the correct government department.',
-                ),
-                const SizedBox(height: 10),
-                _HowCard(
-                  num: '03',
-                  title: 'Track & Resolve',
-                  desc:
-                      'Get a unique tracking ID. Monitor your complaint\'s status in real time. Earn badges for participation.',
-                ),
-              ],
-            ),
-          ),
-
-          // ── TRACK CTA (BLUE BANNER) ─────────────────────
-          const SizedBox(height: 24),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppColors.blue,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Already filed?\nTrack your complaint.',
-                  style: TextStyle(
-                    fontFamily: 'Sora',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    height: 1.2,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Enter your tracking ID to get real-time status updates.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white60,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => setState(() => _tab = 1),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.teal,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 13, horizontal: 24),
-                  ),
-                  child: const Text(
-                    'Track →',
-                    style: TextStyle(
-                      fontFamily: 'Sora',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-        ],
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }
@@ -539,8 +580,7 @@ class _StatStrip extends StatelessWidget {
 
 class _HowCard extends StatelessWidget {
   final String num, title, desc;
-  const _HowCard(
-      {required this.num, required this.title, required this.desc});
+  const _HowCard({required this.num, required this.title, required this.desc});
 
   @override
   Widget build(BuildContext context) {

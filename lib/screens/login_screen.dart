@@ -233,9 +233,9 @@ class _LoginScreenState extends State<LoginScreen>
                                     letterSpacing: -0.5,
                                   ),
                                   children: [
-                                    TextSpan(text: 'Your city.\nYour voice.\n'),
+                                    TextSpan(text: 'Be the change.\nReport. Track. Resolve.\n'),
                                     TextSpan(
-                                      text: 'Real action.',
+                                      text: 'Build a better city.',
                                       style: TextStyle(color: AppColors.teal),
                                     ),
                                   ],
