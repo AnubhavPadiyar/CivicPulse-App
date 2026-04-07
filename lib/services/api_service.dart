@@ -5,8 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class ApiService {
-  // ← Change this to your backend IP/URL
-  static const String baseUrl = 'http://10.0.2.2:5000/api';
+  // ← Updated to ngrok URL
+  static const String baseUrl = 'https://lineally-unlocal-keva.ngrok-free.dev/api';
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -34,12 +34,14 @@ class ApiService {
 
   static Map<String, String> get _headers => {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
       };
 
   static Future<Map<String, String>> get _authHeaders async {
     final token = await getToken();
     return {
       'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
